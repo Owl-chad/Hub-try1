@@ -1,8 +1,8 @@
-
-import React, { createContext, useState, ReactNode, useCallback } from 'react';
-// FIX: Import the 'Message' type from '../types' to resolve 'Cannot find name' errors.
+import React, { createContext, useState, ReactNode, useCallback, useMemo } from 'react';
 import { Post, User, Story, Role, RAICMatrix, RAICEntity, GanttTask, RAICType, Comment, Notification, Conversation, PostStatus, Message, AnalysisQuestionState, ViewingQuestionPayload } from '../types';
 import { INITIAL_USERS, INITIAL_POSTS, INITIAL_STORIES, INITIAL_TEAM_RAIC, TEAM_ROLES_ENTITIES, INITIAL_REPORT_RAIC, REPORT_ENTITIES, INITIAL_GANTT_TASKS, INITIAL_NOTIFICATIONS, INITIAL_CONVERSATIONS, INITIAL_ANALYSIS_STATE } from '../constants';
+import { INITIAL_ANALYSIS_RAIC_MAP } from '../constants/analysisQuestions';
+import { usePersistentState } from '../hooks/usePersistentState';
 
 interface AppContextType {
   currentUser: User;
@@ -17,19 +17,20 @@ interface AppContextType {
   notifications: Notification[];
   conversations: Conversation[];
   analysisState: AnalysisQuestionState[];
+  analysisRaicMap: { [questionId: string]: { [role in Role]?: RAICType } };
   isCreateModalOpen: boolean;
   editingPost: Post | null;
   viewingQuestion: ViewingQuestionPayload | null;
   isEditProfileModalOpen: boolean;
-  setCurrentUser: (user: User) => void;
+  setCurrentUserId: (userId: string) => void;
   addPost: (post: Omit<Post, 'id' | 'createdAt' | 'authorId' | 'likes' | 'comments' | 'status' | 'analysis'>) => void;
   addStory: (story: Omit<Story, 'id' | 'createdAt' | 'authorId'>) => void;
   toggleLike: (postId: string) => void;
-  addComment: (postId: string, text: string) => void;
+  addComment: (postId: string, text: string, parentId?: string) => void;
   updateTeamRaic: (entityId: string, role: Role, value: RAICType) => void;
   addTeamRaicEntity: (name: string) => void;
   updateGanttTask: (task: GanttTask) => void;
-  addGanttTask: (name: string, startDate: Date, endDate: Date) => void;
+  addGanttTask: (taskData: Omit<GanttTask, 'id'>) => void;
   deleteGanttTask: (taskId: string) => void;
   setCreateModalOpen: (isOpen: boolean) => void;
   markNotificationsAsRead: () => void;
@@ -44,23 +45,32 @@ interface AppContextType {
   addAnalysisComment: (projectId: string, questionId: string, commentText: string) => void;
   setEditProfileModalOpen: (isOpen: boolean) => void;
   updateUser: (userId: string, newName: string, newAvatarUrl: string) => void;
+  cycleAnalysisRaic: (questionId: string) => void;
 }
 
 export const AppContext = createContext<AppContextType>(null!);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [users, setUsers] = useState<User[]>(INITIAL_USERS);
-  const [currentUser, setCurrentUser] = useState<User>(users[0]);
-  const [posts, setPosts] = useState<Post[]>(INITIAL_POSTS);
-  const [stories, setStories] = useState<Story[]>(INITIAL_STORIES);
-  const [teamRaicMatrix, setTeamRaicMatrix] = useState<RAICMatrix>(INITIAL_TEAM_RAIC);
-  const [teamRaicEntities, setTeamRaicEntities] = useState<RAICEntity[]>(TEAM_ROLES_ENTITIES);
-  const [reportRaicMatrix, setReportRaicMatrix] = useState<RAICMatrix>(INITIAL_REPORT_RAIC);
-  const [reportRaicEntities, setReportRaicEntities] = useState<RAICEntity[]>(REPORT_ENTITIES);
-  const [ganttTasks, setGanttTasks] = useState<GanttTask[]>(INITIAL_GANTT_TASKS);
-  const [notifications, setNotifications] = useState<Notification[]>(INITIAL_NOTIFICATIONS);
-  const [conversations, setConversations] = useState<Conversation[]>(INITIAL_CONVERSATIONS);
-  const [analysisState, setAnalysisState] = useState<AnalysisQuestionState[]>(INITIAL_ANALYSIS_STATE);
+  const [users, setUsers] = usePersistentState<User[]>('users', INITIAL_USERS);
+  const [currentUserId, setCurrentUserId] = usePersistentState<string>('currentUserId', INITIAL_USERS[0].id);
+
+  const currentUser = useMemo(() => {
+    return users.find(u => u.id === currentUserId) || users[0];
+  }, [users, currentUserId]);
+  
+  const [posts, setPosts] = usePersistentState<Post[]>('posts', INITIAL_POSTS);
+  const [stories, setStories] = usePersistentState<Story[]>('stories', INITIAL_STORIES);
+  const [teamRaicMatrix, setTeamRaicMatrix] = usePersistentState<RAICMatrix>('teamRaicMatrix', INITIAL_TEAM_RAIC);
+  const [teamRaicEntities, setTeamRaicEntities] = usePersistentState<RAICEntity[]>('teamRaicEntities', TEAM_ROLES_ENTITIES);
+  const [reportRaicMatrix, setReportRaicMatrix] = usePersistentState<RAICMatrix>('reportRaicMatrix', INITIAL_REPORT_RAIC);
+  const [reportRaicEntities, setReportRaicEntities] = usePersistentState<RAICEntity[]>('reportRaicEntities', REPORT_ENTITIES);
+  const [ganttTasks, setGanttTasks] = usePersistentState<GanttTask[]>('ganttTasks', INITIAL_GANTT_TASKS);
+  const [notifications, setNotifications] = usePersistentState<Notification[]>('notifications', INITIAL_NOTIFICATIONS);
+  const [conversations, setConversations] = usePersistentState<Conversation[]>('conversations', INITIAL_CONVERSATIONS);
+  const [analysisState, setAnalysisState] = usePersistentState<AnalysisQuestionState[]>('analysisState', INITIAL_ANALYSIS_STATE);
+  const [analysisRaicMap, setAnalysisRaicMap] = usePersistentState<{ [questionId: string]: { [role in Role]?: RAICType } }>('analysisRaicMap', INITIAL_ANALYSIS_RAIC_MAP);
+  
+  // Transient UI state, should not be persisted
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [viewingQuestion, setViewingQuestion] = useState<ViewingQuestionPayload | null>(null);
@@ -78,7 +88,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       analysis: {},
     };
     setPosts(prev => [newPost, ...prev]);
-  }, [currentUser]);
+  }, [currentUser, setPosts]);
 
   const addStory = useCallback((storyData: Omit<Story, 'id' | 'createdAt' | 'authorId'>) => {
     const newStory: Story = {
@@ -88,7 +98,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       createdAt: new Date(),
     };
     setStories(prev => [newStory, ...prev]);
-  }, [currentUser]);
+  }, [currentUser, setStories]);
 
   const toggleLike = useCallback((postId: string) => {
     setPosts(prevPosts =>
@@ -118,22 +128,26 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         return p;
       })
     );
-  }, [currentUser.id, users]);
+  }, [currentUser, users, setPosts, setNotifications]);
 
-  const addComment = useCallback((postId: string, text: string) => {
+  const addComment = useCallback((postId: string, text: string, parentId?: string) => {
     const newComment: Comment = {
       id: `c${Date.now()}`,
       authorId: currentUser.id,
       text,
       createdAt: new Date(),
+      parentId,
     };
     setPosts(prevPosts =>
       prevPosts.map(p => {
         if (p.id === postId) {
+          const newComments = [...p.comments, newComment];
+          const notificationsToAdd: Notification[] = [];
           const postAuthor = users.find(u => u.id === p.authorId);
+
           if (postAuthor && postAuthor.id !== currentUser.id) {
-            const newNotification: Notification = {
-              id: `n${Date.now()}`,
+            notificationsToAdd.push({
+              id: `n${Date.now()}-post-activity`,
               recipientId: postAuthor.id,
               actorId: currentUser.id,
               type: 'comment',
@@ -141,15 +155,39 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
               commentText: text,
               read: false,
               createdAt: new Date(),
-            };
-            setNotifications(prev => [newNotification, ...prev]);
+            });
           }
-          return { ...p, comments: [...p.comments, newComment] };
+          
+          if (parentId) {
+              const parentComment = p.comments.find(c => c.id === parentId);
+              if (parentComment) {
+                  const parentCommentAuthor = users.find(u => u.id === parentComment.authorId);
+                  if (parentCommentAuthor && parentCommentAuthor.id !== currentUser.id && parentCommentAuthor.id !== p.authorId) {
+                      notificationsToAdd.push({
+                          id: `n${Date.now()}-reply`,
+                          recipientId: parentCommentAuthor.id,
+                          actorId: currentUser.id,
+                          type: 'comment_reply',
+                          postId: p.id,
+                          commentText: text,
+                          originalCommentText: parentComment.text,
+                          read: false,
+                          createdAt: new Date(),
+                      });
+                  }
+              }
+          }
+
+          if (notificationsToAdd.length > 0) {
+            setNotifications(prev => [...notificationsToAdd, ...prev]);
+          }
+
+          return { ...p, comments: newComments };
         }
         return p;
       })
     );
-  }, [currentUser, users]);
+  }, [currentUser, users, setPosts, setNotifications]);
   
   const updateTeamRaic = (entityId: string, role: Role, value: RAICType) => {
     setTeamRaicMatrix(prev => ({
@@ -171,20 +209,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setGanttTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
   };
 
-  const addGanttTask = useCallback((name: string, startDate: Date, endDate: Date) => {
+  const addGanttTask = useCallback((taskData: Omit<GanttTask, 'id'>) => {
     const newTask: GanttTask = {
+        ...taskData,
         id: `t${Date.now()}`,
-        name,
-        assignee: currentUser.role,
-        startDate,
-        endDate,
     };
     setGanttTasks(prev => [...prev, newTask]);
-  }, [currentUser.role]);
+  }, [setGanttTasks]);
   
   const deleteGanttTask = useCallback((taskId: string) => {
       setGanttTasks(prev => prev.filter(t => t.id !== taskId));
-  }, []);
+  }, [setGanttTasks]);
   
   const markNotificationsAsRead = () => {
       setNotifications(prev => prev.map(n => ({...n, read: true})));
@@ -216,7 +251,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             return [...prev, newConversation];
         }
     });
-  }, []);
+  }, [setConversations]);
 
   const updatePostStatus = (postId: string, status: PostStatus) => {
     setPosts(prevPosts =>
@@ -246,7 +281,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     );
   };
 
-  const getOrCreateAnalysisState = (projectId: string, questionId: string): [AnalysisQuestionState[], number] => {
+  const getOrCreateAnalysisState = useCallback((projectId: string, questionId: string): [AnalysisQuestionState[], number] => {
     const id = `${projectId}-${questionId}`;
     let stateIndex = analysisState.findIndex(s => s.id === id);
     let newAnalysisState = [...analysisState];
@@ -262,9 +297,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         stateIndex = newAnalysisState.length - 1;
     }
     return [newAnalysisState, stateIndex];
-  };
+  }, [analysisState]);
 
-  const addAnalysisAnswer = (projectId: string, questionId: string, answerText: string) => {
+  const addAnalysisAnswer = useCallback((projectId: string, questionId: string, answerText: string) => {
       const [newAnalysisState, stateIndex] = getOrCreateAnalysisState(projectId, questionId);
       newAnalysisState[stateIndex] = {
           ...newAnalysisState[stateIndex],
@@ -275,9 +310,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           }
       };
       setAnalysisState(newAnalysisState);
-  };
+  }, [currentUser, getOrCreateAnalysisState, setAnalysisState]);
 
-  const toggleAnalysisLike = (projectId: string, questionId: string) => {
+  const toggleAnalysisLike = useCallback((projectId: string, questionId: string) => {
     const [newAnalysisState, stateIndex] = getOrCreateAnalysisState(projectId, questionId);
     const currentState = newAnalysisState[stateIndex];
     const isLiked = currentState.likes.includes(currentUser.id);
@@ -288,9 +323,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         currentState.likes.push(currentUser.id);
     }
     setAnalysisState(newAnalysisState);
-  };
+  }, [currentUser, getOrCreateAnalysisState, setAnalysisState]);
   
-  const addAnalysisComment = (projectId: string, questionId: string, commentText: string) => {
+  const addAnalysisComment = useCallback((projectId: string, questionId: string, commentText: string) => {
       const [newAnalysisState, stateIndex] = getOrCreateAnalysisState(projectId, questionId);
       const newComment: Comment = {
           id: `ac-${Date.now()}`,
@@ -300,23 +335,36 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       };
       newAnalysisState[stateIndex].comments.push(newComment);
       setAnalysisState(newAnalysisState);
-  };
+  }, [currentUser, getOrCreateAnalysisState, setAnalysisState]);
   
   const updateUser = useCallback((userId: string, newName: string, newAvatarUrl: string) => {
-    let updatedUser: User | null = null;
-    const newUsers = users.map(user => {
+    setUsers(prevUsers => prevUsers.map(user => {
         if (user.id === userId) {
-            updatedUser = { ...user, name: newName, avatarUrl: newAvatarUrl };
-            return updatedUser;
+            return { ...user, name: newName, avatarUrl: newAvatarUrl };
         }
         return user;
+    }));
+  }, [setUsers]);
+  
+  const cycleAnalysisRaic = useCallback((questionId: string) => {
+    const RAIC_CYCLE: (RAICType | null)[] = ['R', 'A', 'I', 'C', null];
+    
+    setAnalysisRaicMap(prevMap => {
+        const newMap = JSON.parse(JSON.stringify(prevMap));
+        
+        const questionRoles = newMap[questionId] || {};
+        const currentRaic = questionRoles[currentUser.role] || null;
+        
+        const currentIndex = RAIC_CYCLE.indexOf(currentRaic);
+        const nextIndex = (currentIndex + 1) % RAIC_CYCLE.length;
+        
+        questionRoles[currentUser.role] = RAIC_CYCLE[nextIndex];
+        newMap[questionId] = questionRoles;
+        
+        return newMap;
     });
-    setUsers(newUsers);
+  }, [currentUser.role, setAnalysisRaicMap]);
 
-    if (currentUser.id === userId && updatedUser) {
-        setCurrentUser(updatedUser);
-    }
-  }, [users, currentUser.id]);
 
   return (
     <AppContext.Provider
@@ -333,11 +381,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         notifications,
         conversations,
         analysisState,
+        analysisRaicMap,
         isCreateModalOpen,
         editingPost,
         viewingQuestion,
         isEditProfileModalOpen,
-        setCurrentUser,
+        setCurrentUserId,
         addPost,
         addStory,
         toggleLike,
@@ -360,6 +409,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         addAnalysisComment,
         setEditProfileModalOpen,
         updateUser,
+        cycleAnalysisRaic,
       }}
     >
       {children}

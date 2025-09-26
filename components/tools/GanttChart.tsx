@@ -1,4 +1,4 @@
-import React, { useContext, useMemo, useState, useEffect } from 'react';
+import React, { useContext, useMemo, useState, useEffect, useRef } from 'react';
 import { GanttTask, Role, ALL_ROLES } from '../../types';
 import { AppContext } from '../../context/AppContext';
 import Icon from '../ui/Icon';
@@ -25,16 +25,35 @@ const formatDateForInput = (date: Date): string => {
     return `${year}-${month}-${day}`;
 };
 
+// Heuristic to determine if text should be black or white based on background color
+const getTextColorForBackground = (hexColor?: string): string => {
+    if (!hexColor) return 'text-white';
+    try {
+        const r = parseInt(hexColor.substr(1, 2), 16);
+        const g = parseInt(hexColor.substr(3, 2), 16);
+        const b = parseInt(hexColor.substr(5, 2), 16);
+        const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+        return (yiq >= 128) ? 'text-black' : 'text-white';
+    } catch (e) {
+        return 'text-white';
+    }
+};
+
 const DAY_WIDTH = 32; // Width of a single day cell in pixels
 const MOCK_TODAY = new Date(Date.UTC(2025, 8, 25));
+const COLOR_PALETTE = [
+  '#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899'
+];
 
 const GanttChart: React.FC<{ tasks: GanttTask[] }> = ({ tasks }) => {
-  const { updateGanttTask, addGanttTask, deleteGanttTask } = useContext(AppContext);
+  const { currentUser, updateGanttTask, addGanttTask, deleteGanttTask } = useContext(AppContext);
   
   const [viewDate, setViewDate] = useState(addDaysUTC(MOCK_TODAY, -15));
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingTask, setEditingTask] = useState<GanttTask | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [isTodayCentering, setIsTodayCentering] = useState(false);
 
   const [draggingInfo, setDraggingInfo] = useState<{
     task: GanttTask;
@@ -51,6 +70,28 @@ const GanttChart: React.FC<{ tasks: GanttTask[] }> = ({ tasks }) => {
         setTempTasks(tasks);
     }
   }, [tasks, draggingInfo]);
+
+  useEffect(() => {
+    if (isTodayCentering && scrollContainerRef.current) {
+        const container = scrollContainerRef.current;
+        const containerWidth = container.clientWidth;
+        // The calendar grid starts after the 192px task list
+        // Today is the 15th day in a 0-indexed 30-day view, so its middle is at 15.5 days
+        const todayPosition = 192 + (15.5 * DAY_WIDTH); 
+        
+        let scrollLeft = todayPosition - (containerWidth / 2);
+        
+        const maxScrollLeft = container.scrollWidth - containerWidth;
+        scrollLeft = Math.max(0, Math.min(scrollLeft, maxScrollLeft));
+
+        container.scrollTo({
+            left: scrollLeft,
+            behavior: 'smooth'
+        });
+        
+        setIsTodayCentering(false);
+    }
+  }, [viewDate, isTodayCentering]);
 
   const totalDays = 30;
   const chartStartDate = viewDate;
@@ -128,7 +169,10 @@ const GanttChart: React.FC<{ tasks: GanttTask[] }> = ({ tasks }) => {
   // Navigation handlers
   const handlePrev = () => setViewDate(prev => addDaysUTC(prev, -30));
   const handleNext = () => setViewDate(prev => addDaysUTC(prev, 30));
-  const handleToday = () => setViewDate(addDaysUTC(MOCK_TODAY, -15));
+  const handleToday = () => {
+    setViewDate(addDaysUTC(MOCK_TODAY, -15));
+    setIsTodayCentering(true);
+  };
 
   const daysHeader = Array.from({ length: totalDays }, (_, i) => {
     const day = addDaysUTC(chartStartDate, i);
@@ -142,23 +186,13 @@ const GanttChart: React.FC<{ tasks: GanttTask[] }> = ({ tasks }) => {
       </div>
     );
   });
-  
-  const getRoleColor = (role: Role) => {
-    const colors: Record<Role, string> = {
-      [Role.MarketPioneer]: 'bg-blue-500',
-      [Role.ProductStrategist]: 'bg-purple-500',
-      [Role.ProjectManager]: 'bg-red-500',
-      [Role.UserDesigner]: 'bg-yellow-500 text-black',
-      [Role.TechnicalArtisan]: 'bg-green-500',
-    };
-    return colors[role] || 'bg-gray-500';
-  };
 
   const AddOrEditModal = ({ task, onClose }: { task?: GanttTask, onClose: () => void }) => {
     const [name, setName] = useState(task?.name || '');
     const [startDate, setStartDate] = useState(task ? formatDateForInput(task.startDate) : '');
     const [endDate, setEndDate] = useState(task ? formatDateForInput(task.endDate) : '');
-    const [assignee, setAssignee] = useState(task?.assignee || ALL_ROLES[0]);
+    const [assignee, setAssignee] = useState(task?.assignee || currentUser.role);
+    const [color, setColor] = useState(task?.color || COLOR_PALETTE[4]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -175,16 +209,16 @@ const GanttChart: React.FC<{ tasks: GanttTask[] }> = ({ tasks }) => {
             }
 
             if (task) {
-                updateGanttTask({ ...task, name, startDate: startDateUTC, endDate: endDateUTC, assignee });
+                updateGanttTask({ ...task, name, startDate: startDateUTC, endDate: endDateUTC, assignee, color });
             } else {
-                addGanttTask(name.trim(), startDateUTC, endDateUTC);
+                addGanttTask({ name: name.trim(), startDate: startDateUTC, endDate: endDateUTC, assignee, color });
             }
             onClose();
         }
     };
     
     const handleDelete = () => {
-        if(task && window.confirm(`確定要刪除任務 "${task.name}" 嗎？`)) {
+        if(task) {
             deleteGanttTask(task.id);
             onClose();
         }
@@ -199,14 +233,12 @@ const GanttChart: React.FC<{ tasks: GanttTask[] }> = ({ tasks }) => {
                         <label htmlFor="task-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">任務名稱</label>
                         <input id="task-name" type="text" value={name} onChange={e => setName(e.target.value)} required className="w-full mt-1 p-2 bg-gray-100 dark:bg-gray-700 rounded-md"/>
                     </div>
-                    {task && (
-                      <div>
+                    <div>
                         <label htmlFor="task-assignee" className="block text-sm font-medium text-gray-700 dark:text-gray-300">負責人</label>
                         <select id="task-assignee" value={assignee} onChange={e => setAssignee(e.target.value as Role)} className="w-full mt-1 p-2 bg-gray-100 dark:bg-gray-700 rounded-md">
                            {ALL_ROLES.map(role => <option key={role} value={role}>{role}</option>)}
                         </select>
-                      </div>
-                    )}
+                    </div>
                     <div>
                         <label htmlFor="start-date" className="block text-sm font-medium text-gray-700 dark:text-gray-300">開始日期</label>
                         <input id="start-date" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required className="w-full mt-1 p-2 bg-gray-100 dark:bg-gray-700 rounded-md"/>
@@ -214,6 +246,21 @@ const GanttChart: React.FC<{ tasks: GanttTask[] }> = ({ tasks }) => {
                     <div>
                         <label htmlFor="end-date" className="block text-sm font-medium text-gray-700 dark:text-gray-300">結束日期</label>
                         <input id="end-date" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} required className="w-full mt-1 p-2 bg-gray-100 dark:bg-gray-700 rounded-md"/>
+                    </div>
+                     <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">顏色</label>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                            {COLOR_PALETTE.map(c => (
+                                <button
+                                    key={c}
+                                    type="button"
+                                    onClick={() => setColor(c)}
+                                    className={`w-7 h-7 rounded-full border-2 transition-transform transform hover:scale-110 ${color === c ? 'border-blue-500 scale-110' : 'border-transparent'}`}
+                                    style={{ backgroundColor: c }}
+                                    aria-label={`Select color ${c}`}
+                                />
+                            ))}
+                        </div>
                     </div>
                     <div className="mt-8 flex justify-between items-center">
                         <div>
@@ -250,17 +297,25 @@ const GanttChart: React.FC<{ tasks: GanttTask[] }> = ({ tasks }) => {
       </div>
 
       <div className="flex items-center space-x-2 mb-4">
-          <button onClick={() => setIsAddModalOpen(true)} className="px-3 py-1.5 bg-blue-500 text-white rounded-md text-sm font-semibold hover:bg-blue-600 flex items-center space-x-1">
-            <Icon name="plus" className="w-4 h-4" />
-            <span>新增安排</span>
+          <button 
+            onClick={() => setIsAddModalOpen(true)} 
+            className="p-2 text-blue-500 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/20 flex items-center justify-center transition-colors"
+            aria-label="新增安排"
+            title="新增安排"
+          >
+            <Icon name="plus" className="w-7 h-7" />
           </button>
-          <button onClick={() => setIsEditMode(!isEditMode)} className={`px-3 py-1.5 rounded-md text-sm font-semibold flex items-center space-x-1 ${isEditMode ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'}`}>
-            <Icon name="edit" className="w-4 h-4" />
-            <span>{isEditMode ? '完成編輯' : '編輯任務'}</span>
+          <button 
+            onClick={() => setIsEditMode(!isEditMode)} 
+            className={`p-2 rounded-full flex items-center justify-center transition-colors ${isEditMode ? 'text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+            aria-label={isEditMode ? '完成編輯' : '編輯任務'}
+            title={isEditMode ? '完成編輯' : '編輯任務'}
+          >
+            <Icon name="edit" className="w-7 h-7" />
           </button>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto" ref={scrollContainerRef}>
         <div style={{ width: 192 + totalDays * DAY_WIDTH }} className="relative">
           {/* Header */}
           <div className="sticky top-0 bg-white dark:bg-black z-10">
@@ -299,8 +354,12 @@ const GanttChart: React.FC<{ tasks: GanttTask[] }> = ({ tasks }) => {
                   </div>
                   <div className="flex-grow h-full relative">
                      <div
-                        style={{ left: `${left}px`, width: `${width}px` }}
-                        className={`absolute top-1/2 -translate-y-1/2 h-8 rounded ${getRoleColor(task.assignee)} flex items-center px-2 text-white text-xs whitespace-nowrap overflow-hidden ${!isEditMode ? 'cursor-move' : 'cursor-default'}`}
+                        style={{ 
+                            left: `${left}px`, 
+                            width: `${width}px`,
+                            backgroundColor: task.color || '#6b7280',
+                        }}
+                        className={`absolute top-1/2 -translate-y-1/2 h-8 rounded flex items-center px-2 text-xs whitespace-nowrap overflow-hidden ${getTextColorForBackground(task.color)} ${!isEditMode ? 'cursor-move' : 'cursor-default'}`}
                         title={`${task.name} (${task.assignee})`}
                         onMouseDown={(e) => handleMouseDown(e, task, 'move')}
                       >

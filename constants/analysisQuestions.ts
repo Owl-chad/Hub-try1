@@ -1,3 +1,4 @@
+import { Role, RAICType } from '../types';
 
 export interface AnalysisQuestion {
     id: string;
@@ -172,3 +173,63 @@ export const ANALYSIS_FRAMEWORK: AnalysisSection[] = [
 
 export const TOTAL_QUESTIONS = ANALYSIS_FRAMEWORK.reduce((total, section) => 
     total + section.levels.reduce((subTotal, level) => subTotal + level.questions.length, 0), 0);
+
+export const INITIAL_ANALYSIS_RAIC_MAP: { [questionId: string]: { [role in Role]?: RAICType } } = {
+    // S0: 總環境分析
+    's0-l0-q0': { [Role.MarketPioneer]: 'R', [Role.ProductStrategist]: 'I' },
+    's0-l0-q1': { [Role.MarketPioneer]: 'R', [Role.ProductStrategist]: 'I' },
+    's0-l0-q2': { [Role.MarketPioneer]: 'R', [Role.ProductStrategist]: 'C' },
+    's0-l0-q3': { [Role.MarketPioneer]: 'R', [Role.ProductStrategist]: 'A' },
+    's0-l1-q0': { [Role.MarketPioneer]: 'R', [Role.ProductStrategist]: 'I', [Role.ProjectManager]: 'I' },
+    's0-l1-q1': { [Role.MarketPioneer]: 'R', [Role.ProductStrategist]: 'A' },
+    's0-l1-q2': { [Role.MarketPioneer]: 'R', [Role.ProjectManager]: 'I' },
+    's0-l1-q3': { [Role.MarketPioneer]: 'R', [Role.ProductStrategist]: 'I' },
+    's0-l2-q0': { [Role.TechnicalArtisan]: 'R', [Role.ProductStrategist]: 'I' },
+    's0-l2-q1': { [Role.TechnicalArtisan]: 'R', [Role.ProductStrategist]: 'I' },
+    's0-l2-q2': { [Role.TechnicalArtisan]: 'R', [Role.ProductStrategist]: 'A', [Role.ProjectManager]: 'C' },
+    's0-l2-q3': { [Role.TechnicalArtisan]: 'R', [Role.ProductStrategist]: 'A' },
+    's0-l2-q4': { [Role.TechnicalArtisan]: 'R', [Role.ProjectManager]: 'C' },
+    's0-l2-q5': { [Role.TechnicalArtisan]: 'R', [Role.ProductStrategist]: 'A', [Role.MarketPioneer]: 'C' },
+    's0-l3-q0': { [Role.MarketPioneer]: 'R', [Role.UserDesigner]: 'A' },
+    's0-l3-q1': { [Role.MarketPioneer]: 'R', [Role.UserDesigner]: 'A' },
+    's0-l3-q2': { [Role.MarketPioneer]: 'R', [Role.UserDesigner]: 'C' },
+    's0-l4-q0': { [Role.MarketPioneer]: 'R', [Role.UserDesigner]: 'I' },
+    's0-l4-q1': { [Role.MarketPioneer]: 'R', [Role.ProductStrategist]: 'A' },
+    // S1: 產業環境分析
+    's1-l0-q0': { [Role.MarketPioneer]: 'R', [Role.ProductStrategist]: 'A' },
+    's1-l1-q0': { [Role.MarketPioneer]: 'A', [Role.ProductStrategist]: 'R' },
+    's1-l1-q1': { [Role.MarketPioneer]: 'A', [Role.ProductStrategist]: 'R' },
+    's1-l1-q2': { [Role.MarketPioneer]: 'A', [Role.ProductStrategist]: 'R' },
+    's1-l1-q3': { [Role.MarketPioneer]: 'A', [Role.ProductStrategist]: 'R' },
+    's1-l2-q0': { [Role.TechnicalArtisan]: 'A', [Role.ProjectManager]: 'R', [Role.ProductStrategist]: 'C' },
+    's1-l2-q1': { [Role.TechnicalArtisan]: 'A', [Role.ProjectManager]: 'R' },
+    's1-l3-q0': { [Role.ProductStrategist]: 'A', [Role.UserDesigner]: 'R' },
+    's1-l3-q1': { [Role.ProductStrategist]: 'A', [Role.MarketPioneer]: 'R' },
+    's1-l3-q2': { [Role.ProductStrategist]: 'A', [Role.TechnicalArtisan]: 'R', [Role.UserDesigner]: 'R' },
+    's1-l3-q3': { [Role.ProductStrategist]: 'A', [Role.MarketPioneer]: 'R' },
+    's1-l4-q0': { [Role.MarketPioneer]: 'A', [Role.ProductStrategist]: 'R' },
+    's1-l4-q1': { [Role.MarketPioneer]: 'A', [Role.ProductStrategist]: 'R' },
+    's1-l4-q2': { [Role.MarketPioneer]: 'A', [Role.ProductStrategist]: 'R' },
+    's1-l4-q3': { [Role.MarketPioneer]: 'A', [Role.ProductStrategist]: 'R', [Role.ProjectManager]: 'I' },
+    's1-l4-q4': { [Role.MarketPioneer]: 'A', [Role.ProductStrategist]: 'R' },
+    's1-l4-q5': { [Role.MarketPioneer]: 'A', [Role.ProductStrategist]: 'R', [Role.ProjectManager]: 'C' },
+    // S2: 競爭環境分析
+    's2-l0-q0': { [Role.MarketPioneer]: 'R', [Role.ProductStrategist]: 'A' },
+    's2-l1-q0': { [Role.ProjectManager]: 'R', [Role.TechnicalArtisan]: 'C', [Role.ProductStrategist]: 'A' },
+    's2-l2-q0': { [Role.UserDesigner]: 'R', [Role.MarketPioneer]: 'A' },
+    's2-l3-q0': { [Role.ProductStrategist]: 'R', [Role.MarketPioneer]: 'A' },
+    's2-l4-q0': { [Role.ProductStrategist]: 'R', [Role.MarketPioneer]: 'A' },
+    // S3: 顧客環境分析
+    's3-l0-q0': { [Role.MarketPioneer]: 'A', [Role.UserDesigner]: 'R' },
+    's3-l0-q1': { [Role.MarketPioneer]: 'A', [Role.UserDesigner]: 'R' },
+    's3-l0-q2': { [Role.MarketPioneer]: 'A', [Role.UserDesigner]: 'R' },
+    's3-l0-q3': { [Role.MarketPioneer]: 'A', [Role.UserDesigner]: 'R' },
+    's3-l0-q4': { [Role.MarketPioneer]: 'A', [Role.UserDesigner]: 'R', [Role.ProductStrategist]: 'C' },
+    's3-l1-q0': { [Role.UserDesigner]: 'A', [Role.MarketPioneer]: 'R' },
+    's3-l1-q1': { [Role.UserDesigner]: 'A', [Role.MarketPioneer]: 'R', [Role.ProductStrategist]: 'C' },
+    's3-l1-q2': { [Role.UserDesigner]: 'A', [Role.MarketPioneer]: 'R' },
+    's3-l1-q3': { [Role.UserDesigner]: 'A', [Role.MarketPioneer]: 'R' },
+    's3-l2-q0': { [Role.UserDesigner]: 'A', [Role.ProductStrategist]: 'R' },
+    's3-l2-q1': { [Role.UserDesigner]: 'A', [Role.ProductStrategist]: 'R' },
+    's3-l2-q2': { [Role.UserDesigner]: 'A', [Role.ProductStrategist]: 'R', [Role.MarketPioneer]: 'C' },
+};

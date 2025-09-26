@@ -37,6 +37,7 @@ export interface Comment {
   authorId: string;
   text: string;
   createdAt: Date;
+  parentId?: string;
 }
 
 export enum PostStatus {
@@ -64,9 +65,10 @@ export interface Notification {
   id: string;
   recipientId: string;
   actorId: string;
-  type: 'like' | 'comment';
+  type: 'like' | 'comment' | 'comment_reply';
   postId: string;
   commentText?: string;
+  originalCommentText?: string;
   read: boolean;
   createdAt: Date;
 }
@@ -90,6 +92,7 @@ export interface GanttTask {
   assignee: Role;
   startDate: Date;
   endDate: Date;
+  color?: string;
 }
 
 export interface Message {
@@ -99,6 +102,10 @@ export interface Message {
   text?: string;
   imageUrl?: string;
   timestamp: Date;
+  storyReply?: {
+    storyContent: string;
+    storyImageUrl?: string;
+  };
 }
 
 export interface Conversation {

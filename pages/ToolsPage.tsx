@@ -113,15 +113,21 @@ const ToolsPage: React.FC = () => {
                     (!startDate || new Date(c.createdAt) > startDate)
                 ).length, 0
             );
+            
+            const roleAnalyses = analysisState.filter(s => 
+                s.answer && userIdsInRole.includes(s.answer.authorId) &&
+                (!startDate || new Date(s.answer.createdAt) > startDate)
+            ).length;
 
             return {
                 name: role,
                 '貼文': rolePosts,
                 '回應': roleComments,
+                '分析': roleAnalyses,
             };
         });
 
-    }, [timeRangeIndex, posts, users]);
+    }, [timeRangeIndex, posts, users, analysisState]);
 
 
     const renderContent = () => {
@@ -158,11 +164,12 @@ const ToolsPage: React.FC = () => {
                                     <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                                         <CartesianGrid strokeDasharray="3 3" />
                                         <XAxis dataKey="name" fontSize={10} interval={0} tick={{ dy: 5 }} />
-                                        <YAxis allowDecimals={false} />
+                                        <YAxis allowDecimals={false} domain={[0, 10]} />
                                         <Tooltip content={<CustomTooltip />} />
                                         <Legend wrapperStyle={{ fontSize: '12px' }} />
-                                        <Bar dataKey="回應" fill="#82ca9d" name="回應" />
-                                        <Bar dataKey="貼文" fill="#8884d8" name="貼文" />
+                                        <Bar dataKey="貼文" stackId="a" fill="#8884d8" name="貼文" />
+                                        <Bar dataKey="回應" stackId="a" fill="#82ca9d" name="回應" />
+                                        <Bar dataKey="分析" stackId="a" fill="#ffc658" name="分析" />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>

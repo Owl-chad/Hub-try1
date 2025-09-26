@@ -105,8 +105,15 @@ const MessagesPage: React.FC = () => {
               <div className="flex-grow p-4 space-y-4 overflow-y-auto">
                 {currentConversation?.messages.map(msg => (
                   <div key={msg.id} className={`flex ${msg.senderId === currentUser.id ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-xs px-3 py-2 rounded-lg ${msg.senderId === currentUser.id ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}>
-                      {msg.text}
+                    <div className={`max-w-xs rounded-lg overflow-hidden ${msg.senderId === currentUser.id ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}>
+                      {msg.storyReply && (
+                        <div className="p-2 bg-black/10 dark:bg-black/20 opacity-90">
+                            <p className="text-xs font-semibold line-clamp-2">
+                               Re: {msg.storyReply.storyContent}
+                            </p>
+                        </div>
+                      )}
+                      {msg.text && <p className="px-3 py-2">{msg.text}</p>}
                     </div>
                   </div>
                 ))}

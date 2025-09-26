@@ -140,11 +140,11 @@ export const INITIAL_REPORT_RAIC: RAICMatrix = {
 };
 
 export const INITIAL_GANTT_TASKS: GanttTask[] = [
-    { id: 't1', name: 'Q4 市場趨勢分析', assignee: Role.MarketPioneer, startDate: new Date(Date.UTC(2025, 8, 25)), endDate: new Date(Date.UTC(2025, 9, 10)) },
-    { id: 't2', name: '新功能規格書 v1', assignee: Role.ProductStrategist, startDate: new Date(Date.UTC(2025, 9, 11)), endDate: new Date(Date.UTC(2025, 9, 25)) },
-    { id: 't3', name: '新功能 Prototype 設計', assignee: Role.UserDesigner, startDate: new Date(Date.UTC(2025, 9, 28)), endDate: new Date(Date.UTC(2025, 10, 15)) },
-    { id: 't4', name: '技術選型評估', assignee: Role.TechnicalArtisan, startDate: new Date(Date.UTC(2025, 10, 10)), endDate: new Date(Date.UTC(2025, 10, 25)) },
-    { id: 't5', name: 'Q4 專案排程', assignee: Role.ProjectManager, startDate: new Date(Date.UTC(2025, 8, 25)), endDate: new Date(Date.UTC(2025, 11, 24)) },
+    { id: 't1', name: 'Q4 市場趨勢分析', assignee: Role.MarketPioneer, startDate: new Date(Date.UTC(2025, 8, 25)), endDate: new Date(Date.UTC(2025, 9, 10)), color: '#3b82f6' },
+    { id: 't2', name: '新功能規格書 v1', assignee: Role.ProductStrategist, startDate: new Date(Date.UTC(2025, 9, 11)), endDate: new Date(Date.UTC(2025, 9, 25)), color: '#8b5cf6' },
+    { id: 't3', name: '新功能 Prototype 設計', assignee: Role.UserDesigner, startDate: new Date(Date.UTC(2025, 9, 28)), endDate: new Date(Date.UTC(2025, 10, 15)), color: '#eab308' },
+    { id: 't4', name: '技術選型評估', assignee: Role.TechnicalArtisan, startDate: new Date(Date.UTC(2025, 10, 10)), endDate: new Date(Date.UTC(2025, 10, 25)), color: '#22c55e' },
+    { id: 't5', name: 'Q4 專案排程', assignee: Role.ProjectManager, startDate: new Date(Date.UTC(2025, 8, 25)), endDate: new Date(Date.UTC(2025, 11, 24)), color: '#ef4444' },
 ];
 
 const initialMessages: Message[] = [

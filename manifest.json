@@ -1,0 +1,17 @@
+{
+  "short_name": "TeamSync Hub",
+  "name": "TeamSync Hub",
+  "description": "An Instagram-like internal social platform for startup teams to brainstorm ideas, manage projects with RAIC charts and Gantt views, and track team contributions. Features AI-powered suggestions to enhance collaboration.",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#ffffff"
+}

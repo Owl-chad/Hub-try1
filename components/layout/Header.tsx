@@ -9,12 +9,13 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ onShowNotifications }) => {
-    const { currentUser, users, setCurrentUser, notifications } = useContext(AppContext);
+    const { currentUser, users, setCurrentUserId, notifications } = useContext(AppContext);
 
     const handleUserChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-        const selectedUser = users.find(u => u.id === event.target.value);
+        const selectedUserId = event.target.value;
+        const selectedUser = users.find(u => u.id === selectedUserId);
         if (selectedUser) {
-            setCurrentUser(selectedUser);
+            setCurrentUserId(selectedUserId);
         }
     };
 

@@ -1,6 +1,6 @@
 
-import React, { useContext, useState, useRef } from 'react';
-import { Post, PostStatus } from '../../types';
+import React, { useContext, useState, useRef, useMemo } from 'react';
+import { Post, PostStatus, Comment } from '../../types';
 import { AppContext } from '../../context/AppContext';
 import Icon from '../ui/Icon';
 
@@ -37,6 +37,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
     const { users, currentUser, toggleLike, addComment, setEditingPost } = useContext(AppContext);
     const [commentText, setCommentText] = useState('');
     const [showComments, setShowComments] = useState(false);
+    const [replyingTo, setReplyingTo] = useState<string | null>(null);
     const commentInputRef = useRef<HTMLInputElement>(null);
     const author = users.find(u => u.id === post.authorId);
     const isLiked = post.likes.includes(currentUser.id);
@@ -44,22 +45,84 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
     const handleCommentSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (commentText.trim()) {
-            addComment(post.id, commentText);
+            addComment(post.id, commentText, replyingTo || undefined);
             setCommentText('');
+            setReplyingTo(null);
         }
     };
-
-    if (!author) return null;
-
+    
     const handleCommentIconClick = () => {
         if (!showComments) {
             setShowComments(true);
         }
-        // Use a timeout to ensure the input is visible before focusing
+        setReplyingTo(null);
         setTimeout(() => commentInputRef.current?.focus(), 0);
     };
 
+    const handleReplyClick = (commentId: string) => {
+        setReplyingTo(commentId);
+        if (!showComments) {
+            setShowComments(true);
+        }
+        setTimeout(() => commentInputRef.current?.focus(), 0);
+    };
+
+    const commentsByParent = useMemo(() => {
+        const map: Record<string, Comment[]> = { root: [] };
+        post.comments.forEach(comment => {
+            const parent = comment.parentId || 'root';
+            if (!map[parent]) {
+                map[parent] = [];
+            }
+            map[parent].push(comment);
+        });
+        Object.values(map).forEach(commentList => {
+            commentList.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        });
+        return map;
+    }, [post.comments]);
+
+    const CommentView: React.FC<{ comment: Comment }> = ({ comment }) => {
+        const commentAuthor = users.find(u => u.id === comment.authorId);
+        const replies = commentsByParent[comment.id] || [];
+        if (!commentAuthor) return null;
+
+        return (
+            <div className="flex items-start space-x-2">
+                <img src={commentAuthor.avatarUrl} alt={commentAuthor.name} className="w-6 h-6 rounded-full mt-0.5" />
+                <div className="flex-1">
+                    <p>
+                        <span className="font-semibold mr-1">{commentAuthor.name}</span>
+                        <span>{comment.text}</span>
+                    </p>
+                    <div className="flex items-center space-x-3 text-xs text-gray-400">
+                        <span>{new Date(comment.createdAt).toLocaleDateString()}</span>
+                        <button onClick={() => handleReplyClick(comment.id)} className="font-semibold hover:underline">回覆</button>
+                    </div>
+                    
+                    {replies.length > 0 && (
+                        <div className="mt-2 space-y-3 pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                            {replies.map(reply => (
+                                <CommentView key={reply.id} comment={reply} />
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
+    if (!author) return null;
+
+    const handleCancelReply = () => {
+        setReplyingTo(null);
+        commentInputRef.current?.focus();
+    };
+
     const hasAnalysis = post.analysis && Object.keys(post.analysis).length > 0;
+    const replyingToComment = replyingTo ? post.comments.find(c => c.id === replyingTo) : null;
+    const replyingToUser = replyingToComment ? users.find(u => u.id === replyingToComment.authorId) : null;
+    const placeholder = replyingToUser ? `回覆 ${replyingToUser.name}...` : "新增留言...";
 
     return (
         <div className="bg-white dark:bg-black border-b border-gray-200 dark:border-gray-800">
@@ -128,32 +191,29 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                 
                 {showComments && (
                      <div className="mt-2 text-sm space-y-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                        {post.comments.map(comment => {
-                            const commentAuthor = users.find(u => u.id === comment.authorId);
-                            if (!commentAuthor) return null;
-                            return (
-                                <div key={comment.id} className="flex items-start space-x-2">
-                                    <img src={commentAuthor.avatarUrl} alt={commentAuthor.name} className="w-6 h-6 rounded-full mt-0.5" />
-                                    <div className="flex-1">
-                                        <p>
-                                            <span className="font-semibold mr-1">{commentAuthor.name}</span>
-                                            <span>{comment.text}</span>
-                                        </p>
-                                        <p className="text-xs text-gray-400">{new Date(comment.createdAt).toLocaleString()}</p>
-                                    </div>
-                                </div>
-                            );
-                        })}
+                        {(commentsByParent['root'] || []).map(comment => (
+                            <CommentView key={comment.id} comment={comment} />
+                        ))}
                     </div>
                 )}
 
                 <form onSubmit={handleCommentSubmit} className="mt-2 flex items-center">
+                    {replyingTo && (
+                        <button 
+                            type="button" 
+                            onClick={handleCancelReply} 
+                            className="text-xs text-gray-500 mr-2 p-1 bg-gray-200 dark:bg-gray-700 rounded-full flex-shrink-0"
+                            aria-label="Cancel reply"
+                        >
+                            &times;
+                        </button>
+                    )}
                     <input
                         ref={commentInputRef}
                         type="text"
                         value={commentText}
                         onChange={(e) => setCommentText(e.target.value)}
-                        placeholder="新增留言..."
+                        placeholder={placeholder}
                         className="flex-grow bg-transparent text-sm focus:outline-none"
                     />
                     <button type="submit" className={`text-sm font-semibold ${commentText.trim() ? 'text-blue-500' : 'text-blue-300 dark:text-blue-700'}`} disabled={!commentText.trim()}>發佈</button>

@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { Role, RAICMatrix, RAICEntity, RAICType, ALL_ROLES } from '../../types';
+import Icon from '../ui/Icon';
 
 interface RAICTableProps {
     entities: RAICEntity[];
@@ -11,17 +12,18 @@ interface RAICTableProps {
 
 const RAIC_TYPES: RAICType[] = ['R', 'A', 'I', 'C', null];
 const RAIC_COLORS: Record<string, string> = {
-    'R': 'bg-green-500 text-white',
-    'A': 'bg-blue-500 text-white',
-    'I': 'bg-yellow-500 text-black',
-    'C': 'bg-purple-500 text-white',
+    'R': 'text-purple-500',
+    'A': 'text-orange-500',
+    'I': 'text-blue-500',
+    'C': 'text-green-500',
 };
 
 const RAICCell: React.FC<{ value: RAICType, onClick: () => void }> = ({ value, onClick }) => {
+    const colorClass = value ? RAIC_COLORS[value] : 'text-gray-400 dark:text-gray-500';
     return (
         <td className="border border-gray-300 dark:border-gray-700 text-center p-0">
-            <button onClick={onClick} className={`w-full h-full p-2 font-bold ${value ? RAIC_COLORS[value] : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
-                {value || '-'}
+            <button onClick={onClick} className={`w-full h-full p-2 font-bold text-lg transition-colors duration-150 hover:bg-gray-100 dark:hover:bg-gray-800 ${colorClass}`}>
+                {value || '·'}
             </button>
         </td>
     );
@@ -50,7 +52,7 @@ const RAICTable: React.FC<RAICTableProps> = ({ entities, matrix, onUpdate, onAdd
                 <table className="w-full border-collapse">
                     <thead>
                         <tr>
-                            <th className="sticky left-0 bg-white dark:bg-black border border-gray-300 dark:border-gray-700 p-2 min-w-[150px]">職責/分區</th>
+                            <th className="sticky left-0 z-10 bg-white dark:bg-black border border-gray-300 dark:border-gray-700 p-2 min-w-[150px]">職責/分區</th>
                             {ALL_ROLES.map(role => (
                                 <th key={role} className="border border-gray-300 dark:border-gray-700 p-2 text-sm">{role}</th>
                             ))}
@@ -59,7 +61,7 @@ const RAICTable: React.FC<RAICTableProps> = ({ entities, matrix, onUpdate, onAdd
                     <tbody>
                         {entities.map(entity => (
                             <tr key={entity.id}>
-                                <td className="sticky left-0 bg-white dark:bg-black border border-gray-300 dark:border-gray-700 p-2 font-semibold text-sm">{entity.name}</td>
+                                <td className="sticky left-0 z-10 bg-white dark:bg-black border border-gray-300 dark:border-gray-700 p-2 font-semibold text-sm">{entity.name}</td>
                                 {ALL_ROLES.map(role => (
                                     <RAICCell 
                                         key={role}
@@ -80,7 +82,9 @@ const RAICTable: React.FC<RAICTableProps> = ({ entities, matrix, onUpdate, onAdd
                     placeholder="新增職責/分區"
                     className="flex-grow p-2 bg-gray-100 dark:bg-gray-800 rounded-md border border-gray-300 dark:border-gray-600"
                 />
-                <button type="submit" className="px-4 py-2 bg-blue-500 text-white rounded-md">新增</button>
+                <button type="submit" className="p-2 text-blue-500 rounded-md flex-shrink-0 hover:text-blue-700 dark:hover:text-blue-400 transition-colors">
+                    <Icon name="plus" className="w-5 h-5" />
+                </button>
             </form>
         </div>
     );

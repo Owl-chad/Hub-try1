@@ -30,9 +30,20 @@ const NotificationsPage: React.FC = () => {
                         const post = posts.find(p => p.id === notification.postId);
                         if (!actor || !post) return null;
 
-                        const message = notification.type === 'like' 
-                            ? `對你的貼文 "${post.title}" 表示讚。`
-                            : `在你的貼文 "${post.title}" 留言：「${notification.commentText}」`;
+                        let message = '';
+                        switch (notification.type) {
+                            case 'like':
+                                message = `對你的貼文 "${post.title}" 表示讚。`;
+                                break;
+                            case 'comment':
+                                message = `在你的貼文 "${post.title}" 留言：「${notification.commentText}」`;
+                                break;
+                            case 'comment_reply':
+                                message = `回覆了你在 "${post.title}" 的留言：「${notification.commentText}」`;
+                                break;
+                            default:
+                                break;
+                        }
 
                         return (
                             <li key={notification.id} className={`p-4 flex items-start space-x-4 ${!notification.read ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}>
@@ -41,6 +52,11 @@ const NotificationsPage: React.FC = () => {
                                     <p className="text-sm">
                                         <span className="font-semibold">{actor.name}</span> {message}
                                     </p>
+                                    {notification.type === 'comment_reply' && notification.originalCommentText && (
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 p-2 bg-gray-100 dark:bg-gray-800 rounded-md">
+                                            你的留言：「{notification.originalCommentText}」
+                                        </p>
+                                    )}
                                     <span className="text-xs text-gray-400">{new Date(notification.createdAt).toLocaleString()}</span>
                                 </div>
                                 <img src={post.imageUrl} alt="post" className="w-12 h-12 object-cover rounded-md"/>
